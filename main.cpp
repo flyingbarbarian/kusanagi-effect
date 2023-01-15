@@ -43,6 +43,16 @@ int main(int argc, char *argv[])
     // 動画を表示するウィンドウ
     cv::namedWindow("kusanagi-window", cv::WINDOW_AUTOSIZE);
 
+    // 作成する動画
+    cv::VideoWriter outputVideo;
+    // フォーマット
+    int fourcc = cv::VideoWriter::fourcc('m', 'p', '4', 'v');
+    // サイズ
+    cv::Size outputVideoSize = cv::Size((int) cap.get(cv::CAP_PROP_FRAME_WIDTH), (int) cap.get(cv::CAP_PROP_FRAME_HEIGHT));
+    // FPS
+    int fps = cap.get(cv::CAP_PROP_FPS);
+    outputVideo.open("../result.mp4", fourcc, fps, outputVideoSize);
+
     // 動画を再生する
     cv::Mat frame;
     cv::Mat frameFire;
@@ -74,6 +84,9 @@ int main(int argc, char *argv[])
 
         // 合成された画像を表示する
         cv::imshow("kusanagi-window", dst);
+
+        // 動画を書き込む
+        outputVideo << dst; 
 
         if (cv::waitKey(50) != -1)
         {
