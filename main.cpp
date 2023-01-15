@@ -10,26 +10,33 @@
 // videoの制御
 #include <opencv2/videoio.hpp>
 
-// 動画に炎を重ねる関数の宣言
-cv::Mat combineImageWithFire(cv::Mat frame);
-
 // argcにはコマンドライン引数の個数が渡される。
 // argv[]にはコマンドライン引数が渡される
 int main(int argc, char *argv[])
 {
-    if (argc == 1)
+    if (argc != 2)
     {
         // argv[0]にはプログラム名が格納されている
-        std::cout << "動画パスを指定して下さい" << std::endl;
+        // 引数が一つ以外ならプログラム終了
+        std::cout << "入力動画パスを1つ指定して下さい" << std::endl;
         return 1;
     }
 
-    // 動画を読み込む
+    // 入力動画を読み込む
     const std::string filePath = argv[1];
     cv::VideoCapture cap(filePath, cv::CAP_FFMPEG);
     if (!cap.isOpened())
     {
-        std::cout << "動画を開けません" << std::endl;
+        std::cout << "入力動画を開けません" << std::endl;
+        return 1;
+    }
+
+    // 炎の動画を読み込む
+    const std::string firefilePath = "../fire.mp4";
+    cv::VideoCapture capFire(firefilePath, cv::CAP_FFMPEG);
+    if (!capFire.isOpened())
+    {
+        std::cout << "炎の動画を開けません" << std::endl;
         return 1;
     }
 
@@ -38,18 +45,36 @@ int main(int argc, char *argv[])
 
     // 動画を再生する
     cv::Mat frame;
+    cv::Mat frameFire;
     for (;;)
     {
         cap >> frame;
-        if (frame.empty())
+        capFire >> frameFire;
+
+        if (frame.empty() || frameFire.empty())
         {
             // 動画が終了したらループを抜ける
             break;
         }
 
-        // 動画の各コマを表示する
-        cv::Mat imageWithFire = combineImageWithFire(frame);
-        cv::imshow("kusanagi-window", imageWithFire);
+        // 炎の動画の各コマを入力画像に合うようにアファイン変換する
+        float width = frame.cols;
+        float height = frame.rows;
+        cv::Point2f center = cv::Point2f((width / 2), (height / 2));
+        double degree = 90.0;
+        double scale = 1.0;
+        cv::Mat affined = cv::getRotationMatrix2D(center, degree, scale);
+        cv::warpAffine(frameFire, frameFire, affined, frame.size());
+
+        // 入力画像と炎の画像を合成する
+        double alpha = 0.5;
+        double beta = 1.0 - alpha;
+        cv::Mat dst;
+        cv::addWeighted(frame, alpha, frameFire, beta, 0.0, dst);
+
+        // 合成された画像を表示する
+        cv::imshow("kusanagi-window", dst);
+
         if (cv::waitKey(50) != -1)
         {
             // 50ミリ秒毎に次のコマに進む
@@ -57,13 +82,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    return 0;
-}
 
-// 動画に炎を重ねる関数
-cv::Mat combineImageWithFire(cv::Mat frame)
-{
-    cv::Mat grey;
-    cv::cvtColor(frame, grey, cv::COLOR_BGR2GRAY);
-    return grey;
+    cv::destroyAllWindows();
+    return 0;
 }
